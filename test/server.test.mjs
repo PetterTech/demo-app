@@ -1,15 +1,37 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync } from 'node:fs';
+import { existsSync, mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 
 const moduleUrl = new URL('../server.mjs', import.meta.url);
-async function withServer(env, check) {
+async function withServer(env, check, options = {}) {
   assert.ok(existsSync(moduleUrl), 'server implementation must exist');
   const { createApp } = await import(moduleUrl);
-  const server = createApp({ env });
+  const server = createApp({ env, ...options });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   try { await check(`http://127.0.0.1:${server.address().port}`); }
   finally { await new Promise(resolve => server.close(resolve)); }
+}
+
+async function withCgroupFixture({ membership, mountRoot, filesystem, options, group, values }, check) {
+  const directory = mkdtempSync(path.join(os.tmpdir(), 'demo-cgroup-'));
+  const mountPoint = path.join(directory, 'mount');
+  const groupPath = path.join(mountPoint, group);
+  mkdirSync(groupPath, { recursive: true });
+  const procCgroupPath = path.join(directory, 'cgroup');
+  const procMountInfoPath = path.join(directory, 'mountinfo');
+  writeFileSync(procCgroupPath, `${membership}\n`);
+  writeFileSync(procMountInfoPath, `29 23 0:26 ${mountRoot} ${mountPoint} rw,nosuid,nodev,noexec,relatime - ${filesystem} cgroup rw,${options}\n`);
+  for (const [name, value] of Object.entries(values)) writeFileSync(path.join(groupPath, name), `${value}\n`);
+  try {
+    await withServer({}, async base => {
+      const data = await (await fetch(`${base}/api/runtime`)).json();
+      await check(data);
+    }, { procCgroupPath, procMountInfoPath });
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
 }
 
 test('only explicit public assets are served, with safe methods and a health endpoint', async () => {
@@ -66,5 +88,33 @@ test('runtime endpoint returns real process data and only explicitly public conf
     assert.equal(data.message, '<script>bad()</script>');
     assert.ok(!JSON.stringify(data).includes('never-expose-this'));
     assert.ok(!JSON.stringify(data).includes('secret-token'));
+  });
+});
+
+test('runtime memory metrics follow nested cgroup v2 membership', async () => {
+  await withCgroupFixture({
+    membership: '0::/tenant/container-123',
+    mountRoot: '/',
+    filesystem: 'cgroup2',
+    options: 'rw',
+    group: 'tenant/container-123',
+    values: { 'memory.max': 123456, 'memory.current': 23456 },
+  }, data => {
+    assert.equal(data.containerMemoryLimitBytes, 123456);
+    assert.equal(data.containerMemoryUsageBytes, 23456);
+  });
+});
+
+test('runtime memory metrics follow nested cgroup v1 membership below a mount root', async () => {
+  await withCgroupFixture({
+    membership: '5:cpu,memory:/system.slice/tenant/container-123',
+    mountRoot: '/system.slice',
+    filesystem: 'cgroup',
+    options: 'memory',
+    group: 'tenant/container-123',
+    values: { 'memory.limit_in_bytes': 345678, 'memory.usage_in_bytes': 45678 },
+  }, data => {
+    assert.equal(data.containerMemoryLimitBytes, 345678);
+    assert.equal(data.containerMemoryUsageBytes, 45678);
   });
 });
