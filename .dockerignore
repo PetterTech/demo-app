@@ -1,0 +1,9 @@
+node_modules
+artifacts
+test
+.git
+*.zip
+*.tar
+*.tar.gz
+.env
+.env.*

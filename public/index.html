@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#232323"><meta name="description" content="PetterTech live container demo. Real runtime data, a little less hello world.">
+<title>PetterTech · Live container</title>
+<link rel="icon" href="/favicon.png"><link rel="stylesheet" href="/style.css">
+<script src="/app.js" defer></script>
+</head>
+<body>
+<canvas id="network" aria-hidden="true"></canvas>
+<div class="page">
+<header>
+<img id="logo" src="/logo.png" width="246" height="68" alt="PetterTech — Better Tech">
+<div class="header-status"><span class="eyebrow">LIVE CONTAINER</span><span class="status" id="status" role="status">CONNECTING</span></div>
+</header>
+<main>
+<section class="intro" aria-labelledby="headline">
+<div class="copy"><p class="eyebrow overline"><span class="tiny-line"></span> NOT JUST ANOTHER HELLO WORLD</p>
+<h1 id="headline">Hello from<br><span>PetterTech.</span></h1>
+<p class="message" id="message">Connecting to the container…</p>
+<p class="platform"><span class="platform-symbol" aria-hidden="true">⌘</span><span id="platform">Detecting runtime</span></p>
+</div>
+<div class="visual-caption" aria-hidden="true"><span class="visual-dot"></span> ONE RUNNING PROCESS <small>Abstract visualization · not a topology map</small></div>
+</section>
+<section class="identity" aria-label="Responding instance">
+<div class="identity-top"><span class="eyebrow">THIS REQUEST WAS SERVED BY</span><span class="version" id="version">—</span></div>
+<div class="identity-grid"><div class="identity-app"><span class="label">APP</span><strong id="app-name">Waiting for response</strong></div>
+<div><span class="label">REVISION</span><strong id="revision">—</strong></div>
+<div class="replica-field"><span class="label">REPLICA / HOSTNAME <span id="replica-event" role="status"></span></span><strong id="replica">—</strong></div></div>
+</section>
+<section class="metrics" aria-label="Live metrics">
+<div><span class="label">PROCESS UPTIME</span><strong id="uptime">—</strong><small>Since this process started</small></div>
+<div><span class="label">PROCESS MEMORY</span><strong id="memory">—</strong><small>Resident set · RSS</small></div>
+<div><span class="label">OS / ARCHITECTURE</span><strong id="architecture">—</strong><small id="runtime-short">Runtime not available yet</small></div>
+<div><span class="label">ROUND TRIP</span><strong id="latency">—</strong><small>Browser → app → browser</small></div>
+</section>
+<div class="toolbar"><div class="actions"><button id="request" class="primary" type="button">Send request <span aria-hidden="true">↗</span></button><button id="motion" type="button" aria-pressed="false">Pause motion</button><button id="auto" type="button" aria-pressed="true">Auto-refresh: on</button></div><span class="requests"><span id="request-count">0</span> responses this visit</span></div>
+<p id="error" class="error" role="alert" hidden></p>
+<details><summary>Technical details</summary><div class="detail-grid">
+<div><span class="label">RUNTIME</span><span id="runtime">—</span></div>
+<div><span class="label">CONTAINER MEMORY</span><span id="container-memory">—</span></div>
+<div><span class="label">CONTAINER MEMORY LIMIT</span><span id="memory-limit">—</span></div>
+<div><span class="label">BUILD COMMIT</span><span id="commit">—</span></div>
+<div><span class="label">SERVER TIMESTAMP</span><span id="timestamp">—</span></div>
+<div><span class="label">DATA SOURCE</span><span>Process metrics + allowlisted configuration</span></div>
+</div><p class="detail-note">Memory limits are read from Linux cgroups, never host RAM. Unavailable values are marked explicitly. No credentials, request headers or environment dumps are exposed.</p></details>
+</main>
+<footer><span>PETTERTECH <span class="footer-divider">/</span> BETTER TECH.</span><span id="refresh-note">Live data · every 3 seconds</span></footer>
+</div>
+</body></html>
