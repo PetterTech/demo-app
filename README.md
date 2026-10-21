@@ -61,7 +61,7 @@ docker run --rm -p 127.0.0.1:8080:8080 --read-only --memory=256m --cpus=0.5 --ca
 
 ## Run without Docker
 
-With Node.js 22 or later:
+With Node.js 24 or later:
 
 ```sh
 node server.mjs
@@ -194,7 +194,7 @@ the same URL.
 
 ## Maintenance
 
-Node 22 Alpine is pinned to an image digest for reproducible builds.
+Node 24 Alpine is pinned to an image digest for reproducible builds.
 Update the digest regularly for security fixes and rerun the tests.
 Playwright is a development-only dependency and is not copied into the image.
 Dependabot proposes monthly updates for GitHub Actions, the Docker base image,
