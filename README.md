@@ -68,6 +68,9 @@ node server.mjs
 ```
 
 No `npm install` is required to run the app. The default port is 80.
+On Linux hosts that require elevated privileges to bind port 80, use an
+unprivileged port instead. For example, in bash, run `PORT=8080 node server.mjs`
+and open http://localhost:8080.
 
 ## Customize the demo
 
