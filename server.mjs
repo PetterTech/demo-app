@@ -16,6 +16,15 @@ function cgroupValue(paths) {
   return null;
 }
 
+function smallestCgroupValue(paths) {
+  let smallest = null;
+  for (const path of paths) {
+    const value = cgroupValue([path]);
+    if (value !== null && (smallest === null || value < smallest)) smallest = value;
+  }
+  return smallest;
+}
+
 function unescapeMountPath(value) {
   return value.replace(/\\([0-7]{3})/g, (_, octal) => String.fromCharCode(Number.parseInt(octal, 8)));
 }
@@ -40,7 +49,7 @@ function memoryCgroupPaths(procCgroupPath, procMountInfoPath) {
         options,
       }];
     });
-    const paths = { v2: [], v1: [] };
+    const paths = { v2: [], v2Ancestors: [], v1: [] };
     for (const membership of memberships) {
       const type = membership.hierarchy === '0' && membership.controllers.length === 1 && membership.controllers[0] === ''
         ? 'v2'
@@ -51,22 +60,30 @@ function memoryCgroupPaths(procCgroupPath, procMountInfoPath) {
           || (type === 'v1' && (mount.type !== 'cgroup' || !mount.options.has('memory')))) continue;
         const relative = path.posix.relative(mount.root, path.posix.normalize(membership.group));
         if (relative === '..' || relative.startsWith('../') || path.posix.isAbsolute(relative)) continue;
-        paths[type].push(path.posix.join(mount.point, relative));
+        const directory = path.posix.join(mount.point, relative);
+        paths[type].push(directory);
+        if (type === 'v2') {
+          let ancestor = directory;
+          while (true) {
+            paths.v2Ancestors.push(path.posix.join(ancestor, 'memory.max'));
+            if (ancestor === mount.point) break;
+            ancestor = path.posix.dirname(ancestor);
+          }
+        }
       }
     }
     return paths;
   } catch {
-    return { v2: [], v1: [] };
+    return { v2: [], v2Ancestors: [], v1: [] };
   }
 }
 
 function containerMemory(procCgroupPath, procMountInfoPath) {
   const paths = memoryCgroupPaths(procCgroupPath, procMountInfoPath);
   return {
-    limit: cgroupValue([
-      ...paths.v2.map(directory => path.posix.join(directory, 'memory.max')),
-      ...paths.v1.map(directory => path.posix.join(directory, 'memory.limit_in_bytes')),
-    ]),
+    limit: paths.v2.length
+      ? smallestCgroupValue(paths.v2Ancestors)
+      : cgroupValue(paths.v1.map(directory => path.posix.join(directory, 'memory.limit_in_bytes'))),
     usage: cgroupValue([
       ...paths.v2.map(directory => path.posix.join(directory, 'memory.current')),
       ...paths.v1.map(directory => path.posix.join(directory, 'memory.usage_in_bytes')),

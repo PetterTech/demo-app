@@ -14,7 +14,7 @@ async function withServer(env, check, options = {}) {
   finally { await new Promise(resolve => server.close(resolve)); }
 }
 
-async function withCgroupFixture({ membership, mountRoot, filesystem, options, group, values }, check) {
+async function withCgroupFixture({ membership, mountRoot, filesystem, options, group, values, ancestorValues = {} }, check) {
   const directory = mkdtempSync(path.join(os.tmpdir(), 'demo-cgroup-'));
   const mountPoint = path.join(directory, 'mount');
   const groupPath = path.join(mountPoint, group);
@@ -24,6 +24,11 @@ async function withCgroupFixture({ membership, mountRoot, filesystem, options, g
   writeFileSync(procCgroupPath, `${membership}\n`);
   writeFileSync(procMountInfoPath, `29 23 0:26 ${mountRoot} ${mountPoint} rw,nosuid,nodev,noexec,relatime - ${filesystem} cgroup rw,${options}\n`);
   for (const [name, value] of Object.entries(values)) writeFileSync(path.join(groupPath, name), `${value}\n`);
+  for (const [ancestor, files] of Object.entries(ancestorValues)) {
+    const ancestorPath = path.join(mountPoint, ancestor);
+    mkdirSync(ancestorPath, { recursive: true });
+    for (const [name, value] of Object.entries(files)) writeFileSync(path.join(ancestorPath, name), `${value}\n`);
+  }
   try {
     await withServer({}, async base => {
       const data = await (await fetch(`${base}/api/runtime`)).json();
@@ -101,6 +106,36 @@ test('runtime memory metrics follow nested cgroup v2 membership', async () => {
     values: { 'memory.max': 123456, 'memory.current': 23456 },
   }, data => {
     assert.equal(data.containerMemoryLimitBytes, 123456);
+    assert.equal(data.containerMemoryUsageBytes, 23456);
+  });
+});
+
+test('runtime memory limit includes a capped parent when the cgroup v2 child is unlimited', async () => {
+  await withCgroupFixture({
+    membership: '0::/tenant/container-123',
+    mountRoot: '/',
+    filesystem: 'cgroup2',
+    options: 'rw',
+    group: 'tenant/container-123',
+    values: { 'memory.max': 'max', 'memory.current': 23456 },
+    ancestorValues: { tenant: { 'memory.max': 123456 } },
+  }, data => {
+    assert.equal(data.containerMemoryLimitBytes, 123456);
+    assert.equal(data.containerMemoryUsageBytes, 23456);
+  });
+});
+
+test('runtime memory limit uses the smallest finite cgroup v2 ancestor limit', async () => {
+  await withCgroupFixture({
+    membership: '0::/tenant/container-123',
+    mountRoot: '/',
+    filesystem: 'cgroup2',
+    options: 'rw',
+    group: 'tenant/container-123',
+    values: { 'memory.max': 512000, 'memory.current': 23456 },
+    ancestorValues: { tenant: { 'memory.max': 256000 } },
+  }, data => {
+    assert.equal(data.containerMemoryLimitBytes, 256000);
     assert.equal(data.containerMemoryUsageBytes, 23456);
   });
 });
