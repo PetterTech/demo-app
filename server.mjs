@@ -23,8 +23,8 @@ function unescapeMountPath(value) {
 function memoryCgroupPaths(procCgroupPath, procMountInfoPath) {
   try {
     const memberships = readFileSync(procCgroupPath, 'utf8').trim().split('\n').map(line => {
-      const [hierarchy, controllers, group] = line.split(':');
-      return { hierarchy, controllers: controllers.split(','), group };
+      const [hierarchy, controllers, ...groupParts] = line.split(':');
+      return { hierarchy, controllers: controllers.split(','), group: groupParts.join(':') };
     });
     const mounts = readFileSync(procMountInfoPath, 'utf8').trim().split('\n').flatMap(line => {
       const separator = line.indexOf(' - ');
