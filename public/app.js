@@ -94,7 +94,9 @@ let raf = null, lastFrame = 0, time = 0;
 function resize() {
   width = innerWidth; height = innerHeight;
   const dpr = Math.min(devicePixelRatio || 1, 2);
-  canvas.width = width * dpr; canvas.height = height * dpr;
+  const pixelWidth = Math.floor(width * dpr), pixelHeight = Math.floor(height * dpr);
+  if (canvas.width !== pixelWidth) canvas.width = pixelWidth;
+  if (canvas.height !== pixelHeight) canvas.height = pixelHeight;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   const hero = document.querySelector('.intro').getBoundingClientRect();
   centerX = hero.left + hero.width * (width < 600 ? .88 : .79);
