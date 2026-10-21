@@ -38,8 +38,11 @@ async function refresh() {
     previousIdentity = identity;
     document.querySelector('.identity').classList.toggle('changed', changed);
     set('replica-event', changed ? '↗ INSTANCE CHANGED' : '');
-    accent = /^#[0-9a-f]{6}$/i.test(data.accent) ? data.accent : '#F4D64C';
+    const nextAccent = /^#[0-9a-f]{6}$/i.test(data.accent) ? data.accent : '#F4D64C';
+    const accentChanged = accent !== nextAccent;
+    accent = nextAccent;
     document.documentElement.style.setProperty('--accent', accent);
+    if (paused && accentChanged) draw();
     set('app-name', data.app);
     set('revision', data.revision);
     set('replica', data.replica);
