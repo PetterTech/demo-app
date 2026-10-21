@@ -1,0 +1,117 @@
+name: Test and publish container
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: container-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  test:
+    name: Test application and Docker image
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install test dependencies
+        run: npm ci
+      - name: Install browser
+        run: npx playwright install --with-deps chromium
+      - name: Backend and browser tests
+        run: |
+          npm test
+          npm run test:ui
+      - name: Build local test image
+        run: docker build --tag pettertech-ci:test .
+      - name: Smoke-test actual container
+        run: |
+          docker run --rm --read-only --memory=256m --cpus=0.5 \
+            --cap-drop ALL --security-opt no-new-privileges \
+            --volume "$PWD/test/container-smoke.mjs:/app/test/container-smoke.mjs:ro" \
+            pettertech-ci:test node test/container-smoke.mjs
+
+  publish:
+    name: Publish AMD64 and ARM64 to GHCR
+    needs: test
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - name: Derive image name and validate release version
+        id: image
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        shell: bash
+        run: |
+          if [[ ! "$RELEASE_TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            printf '%s\n' 'Use a version tag such as v1.0.0 (no prerelease suffix).'
+            exit 1
+          fi
+          printf 'name=ghcr.io/%s\n' "${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+          printf 'version=%s\n' "${RELEASE_TAG#v}" >> "$GITHUB_OUTPUT"
+      - name: Set up QEMU for multi-platform builds
+        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3
+        with:
+          platforms: arm64
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and publish versioned image
+        id: build
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.image.outputs.name }}:${{ steps.image.outputs.version }}
+          build-args: |
+            DEMO_VERSION=${{ steps.image.outputs.version }}
+            BUILD_COMMIT=${{ github.sha }}
+          labels: |
+            org.opencontainers.image.title=PetterTech Live Container
+            org.opencontainers.image.description=Branded live container demo with animated graphics and real runtime data
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.version=${{ steps.image.outputs.version }}
+            org.opencontainers.image.revision=${{ github.sha }}
+      - name: Show image reference and first-time visibility reminder
+        env:
+          IMAGE_NAME: ${{ steps.image.outputs.name }}
+          VERSION: ${{ steps.image.outputs.version }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          {
+            printf '## Published container\n\n'
+            printf '%s:%s\n\n' "$IMAGE_NAME" "$VERSION"
+            printf 'Digest-pinned reference: %s@%s\n\n' "$IMAGE_NAME" "$DIGEST"
+            printf 'Platforms: linux/amd64 and linux/arm64.\n\n'
+            printf '**First publish:** go to your GitHub profile → Packages → this image → Package settings → Change visibility → Public.\n\n'
+            printf 'A public repository does not automatically make the container public.\n'
+          } >> "$GITHUB_STEP_SUMMARY"
