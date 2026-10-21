@@ -3,7 +3,7 @@ ARG BUILD_COMMIT=""
 ARG DEMO_VERSION="1.0.0"
 ENV NODE_ENV=production PORT=8080 BUILD_COMMIT=${BUILD_COMMIT} DEMO_VERSION=${DEMO_VERSION}
 WORKDIR /app
-COPY --chown=node:node server.mjs ./
+COPY --chown=node:node server.mjs LICENSE ./
 COPY --chown=node:node public ./public
 USER node
 EXPOSE 8080
