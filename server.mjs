@@ -149,5 +149,5 @@ export function createApp({
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const server = createApp();
-  server.listen(Number(process.env.PORT || 8080), '0.0.0.0', () => console.log('PetterTech demo ready'));
+  server.listen(Number(process.env.PORT || 80), '0.0.0.0', () => console.log('PetterTech demo ready'));
 }

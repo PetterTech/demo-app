@@ -1,7 +1,6 @@
 const $ = id => document.getElementById(id);
 const set = (id, value) => { $(id).textContent = value; };
-const motionPreference = matchMedia('(prefers-reduced-motion: reduce)');
-let paused = motionPreference.matches;
+let paused = false;
 let automatic = true;
 let pending = false;
 let timer;
@@ -185,7 +184,6 @@ function syncMotion() {
   if (!paused && !document.hidden) { lastFrame = performance.now(); raf = requestAnimationFrame(frame); }
 }
 $('motion').addEventListener('click', () => { paused = !paused; syncMotion(); });
-motionPreference.addEventListener('change', event => { paused = event.matches; syncMotion(); });
 document.addEventListener('visibilitychange', () => {
   syncMotion();
   if (document.hidden) clearTimeout(timer);

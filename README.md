@@ -42,11 +42,11 @@ From the repository root:
 
 ```sh
 docker build -t pettertech-demo:1.0.0 .
-docker run --rm -p 127.0.0.1:8080:8080 --name pettertech-demo pettertech-demo:1.0.0
+docker run --rm -p 127.0.0.1:80:80 --name pettertech-demo pettertech-demo:1.0.0
 ```
 
-Open http://localhost:8080. Stop with Ctrl+C or `docker stop pettertech-demo`.
-The loopback binding limits access to your own machine. Use `-p 8080:8080` instead
+Open http://localhost. Stop with Ctrl+C or `docker stop pettertech-demo`.
+The loopback binding limits access to your own machine. Use `-p 80:80` instead
 if you intentionally want to expose the port on all network interfaces.
 
 Apple Silicon Macs normally build ARM64 images locally. For Azure Container Apps,
@@ -56,7 +56,7 @@ both architectures.
 Optional hardened local run:
 
 ```sh
-docker run --rm -p 127.0.0.1:8080:8080 --read-only --memory=256m --cpus=0.5 --cap-drop ALL --security-opt no-new-privileges pettertech-demo:1.0.0
+docker run --rm -p 127.0.0.1:80:80 --read-only --memory=256m --cpus=0.5 --cap-drop ALL --security-opt no-new-privileges pettertech-demo:1.0.0
 ```
 
 ## Run without Docker
@@ -67,7 +67,7 @@ With Node.js 22 or later:
 node server.mjs
 ```
 
-No `npm install` is required to run the app. The default port is 8080.
+No `npm install` is required to run the app. The default port is 80.
 
 ## Customize the demo
 
@@ -77,13 +77,13 @@ Demo configuration and runtime details are **public**. Never put secrets in thes
 - `DEMO_ACCENT`: accent color in `#RRGGBB` format. Default: `#F4D64C`. Choose a light color against the dark background.
 - `DEMO_VERSION`: displayed version. Default: `1.0.0`.
 - `BUILD_COMMIT`: optional public commit ID. Displays "Not provided" when unset.
-- `PORT`: listening port. Default: `8080`.
+- `PORT`: listening port. Default: `80`.
 
 `DEMO_VERSION` and `BUILD_COMMIT` can be set with `--build-arg` or as runtime environment
 variables. This example works in both bash and PowerShell:
 
 ```sh
-docker run --rm -p 127.0.0.1:8080:8080 -e "DEMO_MESSAGE=Hello, NIC!" -e "DEMO_ACCENT=#F4D64C" -e "DEMO_VERSION=2.0" pettertech-demo:1.0.0
+docker run --rm -p 127.0.0.1:80:80 -e "DEMO_MESSAGE=Hello, NIC!" -e "DEMO_ACCENT=#F4D64C" -e "DEMO_VERSION=2.0" pettertech-demo:1.0.0
 ```
 
 Text is limited to 256 characters and rendered as text, never HTML.
@@ -91,7 +91,7 @@ Arbitrary environment variables are not exposed.
 
 ## Azure Container Apps
 
-The image serves HTTP on **target port 8080**. Configure ingress as needed.
+The image serves HTTP on **target port 80**. Configure ingress as needed.
 The app does not need a managed identity or Azure API access to display its runtime data.
 
 ACA sets these variables automatically; **do not set them manually in a real ACA app**:
@@ -152,9 +152,9 @@ See the [ACA environment variable documentation](https://learn.microsoft.com/en-
 - **Revision / replica**: public ACA-provided values, with explicit local fallbacks.
 - On failure, the last values are marked as stale rather than presented as live data.
 
-Graphics run in the browser at approximately 30 frames per second at most, with
-bounded pixel resolution. A pause button and `prefers-reduced-motion` are supported.
-Reduced motion starts with the graphics paused.
+Graphics auto-play in the browser at approximately 30 frames per second at most,
+with bounded pixel resolution and a pause button. Reduced-motion preferences still
+disable CSS transitions, but do not prevent the canvas animation from auto-playing.
 
 ## Endpoints and security
 
@@ -182,7 +182,7 @@ npm run test:ui
 
 Backend tests cover the asset allowlist, runtime data, allowed HTTP methods, and
 rejection of file paths. Browser tests cover actual canvas pixel changes,
-pause/resume, reduced motion, mobile layout, real HTTP requests, and technical details.
+auto-play, pause/resume, mobile layout, real HTTP requests, and technical details.
 Two local HTTP servers with **explicit test fixtures** cover revision changes,
 safe text rendering, accent color, failure handling, and recovery.
 These tests do not verify an actual Azure deployment.
