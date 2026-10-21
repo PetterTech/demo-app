@@ -45,6 +45,30 @@ jobs:
             --cap-drop ALL --security-opt no-new-privileges \
             --volume "$PWD/test/container-smoke.mjs:/app/test/container-smoke.mjs:ro" \
             pettertech-ci:test node test/container-smoke.mjs
+      - name: Smoke-test default container listener
+        run: |
+          container_name=pettertech-ci-default
+          trap 'docker stop "$container_name" >/dev/null 2>&1 || true' EXIT
+          docker run --detach --rm --name "$container_name" \
+            --read-only --memory=256m --cpus=0.5 \
+            --cap-drop ALL --security-opt no-new-privileges \
+            --publish 127.0.0.1::80 pettertech-ci:test
+          host_port="$(docker port "$container_name" 80/tcp | sed 's/.*://')"
+          for attempt in $(seq 1 30); do
+            if [ "$(curl --fail --silent --max-time 1 "http://127.0.0.1:${host_port}/healthz" 2>/dev/null)" = '{"status":"ok"}' ]; then
+              echo "Default container command served /healthz on port 80."
+              exit 0
+            fi
+            if ! docker inspect --format '{{.State.Running}}' "$container_name" | grep -q true; then
+              docker logs "$container_name" || true
+              echo "Default container command exited before becoming healthy."
+              exit 1
+            fi
+            sleep 1
+          done
+          docker logs "$container_name" || true
+          echo "Default container command did not serve /healthz within 30 seconds."
+          exit 1
 
   publish:
     name: Publish AMD64 and ARM64 to GHCR

@@ -50,9 +50,13 @@ try {
   const quiet = await reduced.newPage();
   await quiet.goto(base);
   await quiet.waitForFunction(() => document.querySelector('#status')?.textContent === 'LIVE');
-  assert.equal(await quiet.getByRole('button', { name: 'Resume motion' }).count(), 1, 'reduced motion defaults to paused');
+  assert.equal(await quiet.getByRole('button', { name: 'Pause motion' }).count(), 1, 'animation always starts playing');
+  const quietCanvas = quiet.locator('#network');
+  const quietFrame1 = await quietCanvas.evaluate(element => element.toDataURL());
+  await quiet.waitForTimeout(400);
+  assert.notEqual(quietFrame1, await quietCanvas.evaluate(element => element.toDataURL()), 'animation auto-plays with reduced-motion enabled');
   await reduced.close();
-  console.log('PASS: live runtime UI, real animation, pause/resume, request button, technical details, mobile layout, reduced motion, no JS errors');
+  console.log('PASS: live runtime UI, auto-playing animation, pause/resume, request button, technical details, mobile layout, no JS errors');
 } finally {
   await browser.close();
   if (server) await new Promise(resolve => server.close(resolve));
