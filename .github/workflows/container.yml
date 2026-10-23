@@ -52,11 +52,11 @@ jobs:
           docker run --detach --rm --name "$container_name" \
             --read-only --memory=256m --cpus=0.5 \
             --cap-drop ALL --security-opt no-new-privileges \
-            --publish 127.0.0.1::80 pettertech-ci:test
-          host_port="$(docker port "$container_name" 80/tcp | sed 's/.*://')"
+            --publish 127.0.0.1::8080 pettertech-ci:test
+          host_port="$(docker port "$container_name" 8080/tcp | sed 's/.*://')"
           for attempt in $(seq 1 30); do
             if [ "$(curl --fail --silent --max-time 1 "http://127.0.0.1:${host_port}/healthz" 2>/dev/null)" = '{"status":"ok"}' ]; then
-              echo "Default container command served /healthz on port 80."
+              echo "Default container command served /healthz on port 8080."
               exit 0
             fi
             if ! docker inspect --format '{{.State.Running}}' "$container_name" | grep -q true; then
